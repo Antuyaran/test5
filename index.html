@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Grid Overlay Experiment</title>
+    <style>
+        /* =========================================
+           === 全局与基础样式 (GLOBAL & BASE) ===
+           ========================================= */
+        :root {
+            /* 基础颜色参数 */
+            --fill-color: #ffffff;
+            --text-color: #b7a180;
+            
+            /* 网格视觉参数将由底部的 JS Config 动态写入 
+               以确保 JS 计算和 CSS 渲染完全同步 
+            */
+            --grid-color: #8ed2f2;
+            --grid-opacity: 0.9;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--fill-color);
+            overflow: hidden; /* 隐藏浏览器全局滚动条 */
+            /* 1. 背景层级在最下 */
+        }
+
+        /* =========================================
+           === 正文模块 (TEXT MODULE) ===
+           完全保留基础格式，不被网格挤开
+           ========================================= */
+        #text-container {
+            /* 2. 正文阅读模块层级 */
+            position: relative;
+            z-index: 1;
+            width: 100vw;
+            height: 100vh;
+            overflow-y: auto; /* 允许正文区纵向滚动 */
+            display: flex;
+            justify-content: flex-start;
+            
+            /* 保留原版动态内边距：保证阅读密度一致 */
+            padding: clamp(20px, 6vh, 60px) clamp(20px, 5vw, 60px);
+            box-sizing: border-box;
+
+            /* 隐藏滚动条但保留滚动能力 */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        #text-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        /* 正文内容包装器，靠左对齐 */
+        .text-content {
+            max-width: 800px;
+            width: 100%;
+            margin: 0; 
+        }
+
+        .text-content p {
+            font-family: "PingFang SC Light", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            font-weight: 300;
+            font-size: 19px;
+            color: var(--text-color);
+            line-height: 20px;
+            
+            text-align: left;
+            text-justify: none; /* 不两端对齐 */
+            
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            
+            margin-top: 0;
+            margin-bottom: 25px; /* 段落间距 */
+        }
+
+        /* =========================================
+           === 隐藏网格系统 (GRID OVERLAY) ===
+           ========================================= */
+        #grid-overlay {
+            /* 3. 透明网格 overlay 层级 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            /* 重要：使网格层对鼠标事件穿透，不影响下方正文内容的滚动与选中 */
+            pointer-events: none; 
+        }
+
+        /* 4. 被激活的蓝色 grid cells */
+        .grid-cell {
+            position: absolute;
+            background-color: var(--grid-color);
+            /* 动画：透明度从 0 到设定值，尺寸从 0.95 到 1 */
+            animation: cellAppear 0.25s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        @keyframes cellAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            100% {
+                opacity: var(--grid-opacity);
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="text-container">
+        <div class="text-content">
+            <p>The Time Traveller (for so it will be convenient to speak of him) was expounding a recondite matter to us. His grey eyes shone and twinkled, and his usually pale face was flushed and animated. The fire burned brightly, and the soft radiance of the incandescent lights in the lilies of silver caught the bubbles that flashed and passed in our glasses.</p>
+
+            <p>Our chairs, being his patents, embraced and caressed us rather than submitted to be sat upon, and there was that luxurious after-dinner atmosphere when thought roams gracefully free of the trammels of precision. And he put it to us in this way—marking the points with a lean forefinger—as we sat and lazily admired his earnestness over this new paradox.</p>
+
+            <p>“You must follow me carefully. I shall have to controvert one or two ideas that are almost universally accepted. The geometry, for instance, they taught you at school is founded on a misconception.”</p>
+
+            <p>“Is not that rather a large thing to expect us to begin upon?” said Filby, an argumentative person with red hair. “I do not mean to ask you to accept anything without reasonable ground for it. You will soon admit as much as I need from you.”</p>
+
+            <p>“You know of course that a mathematical line, a line of thickness nil, has no real existence. They taught you that? Neither has a mathematical plane. These things are mere abstractions. But what about a cube? Can a cube that does not last for any time at all, have a real existence?”</p>
+            
+            <p>Filby became pensive. “Clearly,” the Time Traveller proceeded, “any real body must have extension in four directions: it must have Length, Breadth, Thickness, and—Duration. But through a natural infirmity of the flesh, which I will explain to you in a moment, we incline to overlook this fact.”</p>
+
+            <p>“There are really four dimensions, three which we call the three planes of Space, and a fourth, Time. There is, however, a tendency to draw an unreal distinction between the former three dimensions and the latter, because it happens that our consciousness moves intermittently in one direction along the latter from the beginning to the end of our lives.”</p>
+            
+            <p>“That,” said a very young man, making spasmodic efforts to relight his cigar over the lamp; “that... very clear indeed.”</p>
+            
+            <p>“Now, it is very remarkable that this is so extensively overlooked,” continued the Time Traveller, with a slight accession of cheerfulness. “Really this is what is meant by the Fourth Dimension, though some people who talk about the Fourth Dimension do not know they mean it. It is only another way of looking at Time.”</p>
+        </div>
+    </div>
+
+    <div id="grid-overlay"></div>
+
+    <script>
+        /* =========================================
+           === 网格参数配置区 (PARAMETERS) ===
+           ========================================= */
+        const CONFIG = {
+            // 响应式格子尺寸设计
+            MOBILE_CELL_SIZE: 18,    // 手机端网格大小 (px)
+            DESKTOP_CELL_SIZE: 100,   // 电脑端网格大小 (px)
+            MOBILE_BREAKPOINT: 768,  // 断点宽度 (px)
+
+            // 随机填色数量范围
+            MIN_ACTIVE_CELLS: 8,
+            MAX_ACTIVE_CELLS: 20,
+
+            // 颜色与透明度
+            GRID_COLOR: "#8ed2f2",
+            GRID_OPACITY: 1,
+
+            // 交互触发开关
+            TRIGGER_ON_CLICK: true,
+            TRIGGER_ON_SCROLL: true,
+            
+            // 滚动节流时间(ms)，避免频繁滚动造成卡顿和过度闪烁
+            SCROLL_THROTTLE_MS: 150 
+        };
+
+        /* =========================================
+           === 系统变量与状态 ===
+           ========================================= */
+        let currentCellSize = CONFIG.DESKTOP_CELL_SIZE;
+        let totalCols = 0;
+        let totalRows = 0;
+        let scrollTimeout = null;
+
+        const overlay = document.getElementById('grid-overlay');
+        const textContainer = document.getElementById('text-container');
+        const rootVars = document.documentElement;
+
+        /* =========================================
+           === 核心逻辑函数 ===
+           ========================================= */
+
+        // 1. 初始化 CSS 变量
+        function initCSSVariables() {
+            rootVars.style.setProperty('--grid-color', CONFIG.GRID_COLOR);
+            rootVars.style.setProperty('--grid-opacity', CONFIG.GRID_OPACITY);
+        }
+
+        // 2. resize 时重新计算视口网格的行数与列数
+        function calculateGridDimensions() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // 根据窗口宽度决定当前的网格大小
+            currentCellSize = width <= CONFIG.MOBILE_BREAKPOINT 
+                ? CONFIG.MOBILE_CELL_SIZE 
+                : CONFIG.DESKTOP_CELL_SIZE;
+
+            // 计算当前屏幕能容纳的最多行列数
+            // 使用 Math.ceil 确保边缘的网格也能覆盖整个屏幕
+            totalCols = Math.ceil(width / currentCellSize);
+            totalRows = Math.ceil(height / currentCellSize);
+        }
+
+        // 3. 生成并在界面上绘制随机的蓝色块
+        function generateActiveCells() {
+            // 清除上一批蓝色格子
+            overlay.innerHTML = '';
+
+            // 计算本次要生成的随机格子数量
+            const range = CONFIG.MAX_ACTIVE_CELLS - CONFIG.MIN_ACTIVE_CELLS;
+            const numCells = Math.floor(Math.random() * (range + 1)) + CONFIG.MIN_ACTIVE_CELLS;
+
+            const usedPositions = new Set();
+
+            for (let i = 0; i < numCells; i++) {
+                let col, row, posKey;
+                let safetyCounter = 0;
+
+                // 随机生成坐标，并通过 Set 确保不重复生成在同一个位置
+                do {
+                    col = Math.floor(Math.random() * totalCols);
+                    row = Math.floor(Math.random() * totalRows);
+                    posKey = `${col}-${row}`;
+                    safetyCounter++;
+                } while (usedPositions.has(posKey) && safetyCounter < 100);
+
+                usedPositions.add(posKey);
+
+                // 创建 DOM 元素
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.style.width = `${currentCellSize}px`;
+                cell.style.height = `${currentCellSize}px`;
+                cell.style.left = `${col * currentCellSize}px`;
+                cell.style.top = `${row * currentCellSize}px`;
+
+                overlay.appendChild(cell);
+            }
+        }
+
+        /* =========================================
+           === 事件监听绑定 ===
+           ========================================= */
+
+        // 屏幕尺寸改变时：重新计算网格并清屏（你也可以选择不清屏直接重新生成）
+        window.addEventListener('resize', () => {
+            calculateGridDimensions();
+            overlay.innerHTML = ''; // 屏幕尺寸变化时临时清空，等待下次交互
+        });
+
+        // Click 触发
+        if (CONFIG.TRIGGER_ON_CLICK) {
+            document.addEventListener('click', () => {
+                generateActiveCells();
+            });
+        }
+
+        // Scroll / Wheel 触发 (添加节流优化性能和视觉节奏)
+        if (CONFIG.TRIGGER_ON_SCROLL) {
+            // 监听外层文本容器的滚动事件
+            textContainer.addEventListener('scroll', handleScroll);
+            // 兼容触控板等 wheel 行为
+            window.addEventListener('wheel', handleScroll);
+        }
+
+        function handleScroll() {
+            if (!scrollTimeout) {
+                generateActiveCells();
+                scrollTimeout = setTimeout(() => {
+                    scrollTimeout = null;
+                }, CONFIG.SCROLL_THROTTLE_MS);
+            }
+        }
+
+        /* =========================================
+           === 初始化执行 ===
+           ========================================= */
+        initCSSVariables();
+        calculateGridDimensions();
+        // 初始时不调用 generateActiveCells()，符合“页面加载时先不显示蓝色格子”的需求
+
+    </script>
+</body>
+</html>
